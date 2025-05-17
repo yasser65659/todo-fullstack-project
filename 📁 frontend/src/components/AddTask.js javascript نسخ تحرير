@@ -1,0 +1,24 @@
+import React, { useState } from 'react';
+import axios from 'axios';
+
+function AddTask() {
+  const [title, setTitle] = useState('');
+
+  const addTask = async () => {
+    const token = localStorage.getItem('token');
+    await axios.post('http://localhost:5000/tasks', { title }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setTitle('');
+  };
+
+  return (
+    <div>
+      <h2>Add Task</h2>
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task Title" />
+      <button onClick={addTask}>Add</button>
+    </div>
+  );
+}
+
+export default AddTask;
