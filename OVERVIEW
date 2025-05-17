@@ -1,0 +1,13 @@
+todo-fullstack-project/
+├── backend/
+│   ├── app.py
+│   └── requirements.txt
+├── frontend/
+│   └── src/
+│       ├── App.js
+│       ├── index.js
+│       └── components/
+│           ├── Login.js
+│           ├── AddTask.js
+│           └── TodoList.js
+├── README.md
