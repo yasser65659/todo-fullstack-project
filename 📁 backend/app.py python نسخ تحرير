@@ -1,0 +1,61 @@
+from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
+import jwt
+import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your-secret-key'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo.db'
+db = SQLAlchemy(app)
+CORS(app)
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True)
+    password = db.Column(db.String(100))
+
+class Task(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+
+@app.before_first_request
+def create_tables():
+    db.create_all()
+
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.json
+    hashed_pw = generate_password_hash(data['password'])
+    new_user = User(username=data['username'], password=hashed_pw)
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify({'message': 'User registered successfully'})
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json
+    user = User.query.filter_by(username=data['username']).first()
+    if user and check_password_hash(user.password, data['password']):
+        token = jwt.encode({'user_id': user.id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)}, app.config['SECRET_KEY'], algorithm='HS256')
+        return jsonify({'token': token})
+    return jsonify({'message': 'Invalid credentials'}), 401
+
+@app.route('/tasks', methods=['GET', 'POST'])
+def tasks():
+    token = request.headers.get('Authorization').split()[1]
+    user_id = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])['user_id']
+    if request.method == 'POST':
+        title = request.json['title']
+        new_task = Task(title=title, user_id=user_id)
+        db.session.add(new_task)
+        db.session.commit()
+        return jsonify({'message': 'Task added'})
+    else:
+        tasks = Task.query.filter_by(user_id=user_id).all()
+        return jsonify([{'id': t.id, 'title': t.title} for t in tasks])
+
+if __name__ == '__main__':
+    app.run(debug=True)
